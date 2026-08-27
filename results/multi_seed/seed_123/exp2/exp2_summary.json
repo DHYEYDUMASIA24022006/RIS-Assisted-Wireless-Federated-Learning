@@ -1,0 +1,64 @@
+{
+  "fixed_budget": {
+    "latency_ms": 100.0,
+    "energy_mj": 50.0
+  },
+  "convergence": {
+    "Joint+RIS (Proposed)": {
+      "final_accuracy_percent": 16.76,
+      "mean_participating_clients": 1.0,
+      "mean_successful_uploads": 0.5,
+      "mean_snr_db": 24.24953417103819,
+      "mean_outage_probability": 0.5,
+      "mean_aggregation_mse": 8.060892814743976e-06,
+      "mean_latency_ms": 96.23996377959774,
+      "mean_energy_mj": 19.393631111611185,
+      "successful_upload_fairness": 0.5
+    },
+    "Channel-Only (No RIS)": {
+      "final_accuracy_percent": 14.0,
+      "mean_participating_clients": 3.0,
+      "mean_successful_uploads": 0.5,
+      "mean_snr_db": 5.50265367530733,
+      "mean_outage_probability": 0.8333333333333334,
+      "mean_aggregation_mse": 3.410723506310589e-06,
+      "mean_latency_ms": 3676.6115003876403,
+      "mean_energy_mj": 409.63303869284937,
+      "successful_upload_fairness": 0.5
+    },
+    "Random (No RIS)": {
+      "final_accuracy_percent": 4.8,
+      "mean_participating_clients": 3.0,
+      "mean_successful_uploads": 0.0,
+      "mean_snr_db": -11.554183377029027,
+      "mean_outage_probability": 1.0,
+      "mean_aggregation_mse": 0.0,
+      "mean_latency_ms": 42794.24497146037,
+      "mean_energy_mj": 4228.752673610301,
+      "successful_upload_fairness": 0.0
+    },
+    "Channel + Random RIS": {
+      "final_accuracy_percent": 15.99,
+      "mean_participating_clients": 3.0,
+      "mean_successful_uploads": 0.3333333333333333,
+      "mean_snr_db": 5.368355735187142,
+      "mean_outage_probability": 0.888888888888889,
+      "mean_aggregation_mse": 5.063872711990205e-06,
+      "mean_latency_ms": 1726.805017241901,
+      "mean_energy_mj": 199.97664390061496,
+      "successful_upload_fairness": 0.3333333333333333
+    }
+  },
+  "accuracy_vs_latency_budget_ms": {
+    "Joint+RIS (Proposed)": {},
+    "Channel-Only (No RIS)": {},
+    "Random (No RIS)": {},
+    "Channel + Random RIS": {}
+  },
+  "participants_vs_energy_budget_mj": {
+    "Joint+RIS (Proposed)": {},
+    "Channel-Only (No RIS)": {},
+    "Random (No RIS)": {},
+    "Channel + Random RIS": {}
+  }
+}

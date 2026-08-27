@@ -1,0 +1,15 @@
+{
+    "experiment": "exp2_channel_only",
+    "num_rounds": 6,
+    "best_test_accuracy": 34.72,
+    "final_test_accuracy": 34.72,
+    "mean_snr_db": 7.991897774073433,
+    "mean_outage_probability": 0.8333333333333334,
+    "mean_successful_uploads": 0.5,
+    "mean_aggregation_mse": 1.201893450698241e-05,
+    "mean_uplink_rate_bps": 39594143.346062504,
+    "mean_latency_ms": 6778.480209813457,
+    "mean_energy_mj": 539.5156927961499,
+    "final_successful_upload_fairness": 0.5,
+    "rounds_to_target": -1
+}

@@ -1,0 +1,15 @@
+{
+    "experiment": "exp1_Fading_+_Random_RIS",
+    "num_rounds": 3,
+    "best_test_accuracy": 10.94,
+    "final_test_accuracy": 10.94,
+    "mean_snr_db": 5.075868247776648,
+    "mean_outage_probability": 0.6666666666666666,
+    "mean_successful_uploads": 1.3333333333333333,
+    "mean_aggregation_mse": 0.0001505822691104576,
+    "mean_uplink_rate_bps": 30590349.110139493,
+    "mean_latency_ms": 4688.56550635679,
+    "mean_energy_mj": 340.292294772714,
+    "final_successful_upload_fairness": 0.6666666666666666,
+    "rounds_to_target": -1
+}

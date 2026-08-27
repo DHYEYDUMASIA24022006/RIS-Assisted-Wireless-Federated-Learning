@@ -1,0 +1,15 @@
+{
+    "experiment": "exp3_aircomp_no_ris_alpha_100.0",
+    "num_rounds": 5,
+    "best_test_accuracy": 36.46,
+    "final_test_accuracy": 36.46,
+    "mean_snr_db": -4.07745224429476,
+    "mean_outage_probability": 0.8,
+    "mean_successful_uploads": 0.6,
+    "mean_aggregation_mse": 1.057947390205225,
+    "mean_uplink_rate_bps": 18685021.09625282,
+    "mean_latency_ms": 26805.343446356128,
+    "mean_energy_mj": 2644.3454199628286,
+    "final_successful_upload_fairness": 0.5,
+    "rounds_to_target": -1
+}

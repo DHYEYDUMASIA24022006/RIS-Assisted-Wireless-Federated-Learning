@@ -1,0 +1,15 @@
+{
+    "experiment": "exp2_random",
+    "num_rounds": 6,
+    "best_test_accuracy": 17.28,
+    "final_test_accuracy": 17.28,
+    "mean_snr_db": -9.310951034472263,
+    "mean_outage_probability": 0.9444444444444445,
+    "mean_successful_uploads": 0.16666666666666666,
+    "mean_aggregation_mse": 1.2385268244734823e-06,
+    "mean_uplink_rate_bps": 10642256.898755165,
+    "mean_latency_ms": 78541.35088191323,
+    "mean_energy_mj": 6367.057732401016,
+    "final_successful_upload_fairness": 0.16666666666666666,
+    "rounds_to_target": -1
+}

@@ -1,0 +1,15 @@
+{
+    "experiment": "exp3_fedavg_no_ris_alpha_0.5",
+    "num_rounds": 5,
+    "best_test_accuracy": 11.15,
+    "final_test_accuracy": 11.15,
+    "mean_snr_db": -6.030715478142014,
+    "mean_outage_probability": 0.8666666666666668,
+    "mean_successful_uploads": 0.4,
+    "mean_aggregation_mse": 4.772696423433017e-06,
+    "mean_uplink_rate_bps": 14943657.672073439,
+    "mean_latency_ms": 33791.777855130036,
+    "mean_energy_mj": 3499.8737393382667,
+    "final_successful_upload_fairness": 0.3333333333333333,
+    "rounds_to_target": -1
+}
