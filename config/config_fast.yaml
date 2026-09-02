@@ -1,9 +1,9 @@
-# Fast evaluation config - MNIST, reduced rounds for CPU execution
+# Fast evaluation config - MNIST, reduced rounds for quick execution
 # Use this to generate results quickly; switch back to config.yaml for full GPU runs
 
 system:
   seed: 42
-  device: 'cpu'
+  device: 'auto'
   results_dir: 'results'
 
 channel:
@@ -28,13 +28,13 @@ channel:
 
 ris:
   optimizer: 'ao'
-  max_iterations: 50
+  max_iterations: 10
   convergence_threshold: 1e-6
   phase_quantization_bits: null
 
 fl:
   num_clients: 10
-  num_rounds: 50
+  num_rounds: 10
   local_epochs: 2
   batch_size: 64
   learning_rate: 0.01
@@ -75,12 +75,14 @@ aircomp:
   normalise_updates: true
 
 experiments:
-  exp1_rounds: 50
+  exp1_rounds: 10
   exp2_latency_sweep: [50, 75, 100, 150, 200]
   exp2_energy_sweep: [20, 30, 50, 75, 100]
   exp3_ris_elements_sweep: [16, 32, 64, 128]
   exp3_snr_sweep: [-5, 0, 5, 10, 15, 20]
-  exp3_fl_rounds: 20
+  exp3_fl_rounds: 10
+  exp2_skip_sweeps: true
+  exp3_mse_trials: 10
 
 plot:
   dpi: 300

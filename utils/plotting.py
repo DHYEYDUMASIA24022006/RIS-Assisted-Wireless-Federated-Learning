@@ -69,7 +69,7 @@ def plot_convergence_curves(results_dict, save_path, title):
     
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.tight_layout()
-    plt.savefig(save_path)
+    save_figure(fig, save_path)
     plt.close(fig)
 
 def plot_bar_comparison(labels, values, save_path, title, ylabel):
@@ -100,7 +100,7 @@ def plot_bar_comparison(labels, values, save_path, title, ylabel):
     
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.tight_layout()
-    plt.savefig(save_path)
+    save_figure(fig, save_path)
     plt.close(fig)
 
 def plot_cdf(data_dict, save_path, title, xlabel):
@@ -116,7 +116,7 @@ def plot_cdf(data_dict, save_path, title, xlabel):
                 label=method_name, 
                 linestyle=linestyles[i % len(linestyles)],
                 linewidth=2.5)
-        
+    
     ax.set_xlabel(xlabel)
     ax.set_ylabel('CDF')
     ax.set_title(title)
@@ -125,7 +125,7 @@ def plot_cdf(data_dict, save_path, title, xlabel):
     
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.tight_layout()
-    plt.savefig(save_path)
+    save_figure(fig, save_path)
     plt.close(fig)
 
 def plot_heatmap(data_2d, x_labels, y_labels, save_path, title):
@@ -145,7 +145,7 @@ def plot_heatmap(data_2d, x_labels, y_labels, save_path, title):
     
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.tight_layout()
-    plt.savefig(save_path)
+    save_figure(fig, save_path)
     plt.close(fig)
 
 def plot_mse_vs_param(param_values, mse_values_dict, save_path, xlabel, title):
@@ -168,7 +168,7 @@ def plot_mse_vs_param(param_values, mse_values_dict, save_path, xlabel, title):
     
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.tight_layout()
-    plt.savefig(save_path)
+    save_figure(fig, save_path)
     plt.close(fig)
 
 def plot_fairness(alpha_values, fairness_dict, save_path):
@@ -195,5 +195,5 @@ def plot_fairness(alpha_values, fairness_dict, save_path):
         
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.tight_layout()
-    plt.savefig(save_path)
+    save_figure(fig, save_path)
     plt.close(fig)

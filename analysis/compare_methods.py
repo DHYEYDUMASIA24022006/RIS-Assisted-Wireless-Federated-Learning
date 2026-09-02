@@ -26,6 +26,8 @@ import seaborn as sns
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from utils.plotting import save_figure
+
 
 def load_experiment_results(results_dir: str) -> dict:
     """Load summary JSONs from each experiment directory."""
@@ -206,7 +208,7 @@ def generate_combined_plots(csv_data: dict, save_dir: str,
         ax.grid(True, alpha=0.3)
         fig.tight_layout()
         path = os.path.join(save_dir, f'three_way_convergence.{fmt}')
-        fig.savefig(path, dpi=dpi, bbox_inches='tight')
+        save_figure(fig, path, dpi=dpi)
         plt.close(fig)
         print(f'  Combined convergence plot saved: {path}')
 
@@ -242,7 +244,7 @@ def generate_combined_plots(csv_data: dict, save_dir: str,
         fig.suptitle('Methodology Comparison: Key Metrics', fontsize=fontsize + 2)
         fig.tight_layout()
         path = os.path.join(save_dir, f'metric_comparison.{fmt}')
-        fig.savefig(path, dpi=dpi, bbox_inches='tight')
+        save_figure(fig, path, dpi=dpi)
         plt.close(fig)
         print(f'  Metric comparison plot saved: {path}')
 
