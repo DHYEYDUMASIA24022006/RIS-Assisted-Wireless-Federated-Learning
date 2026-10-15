@@ -9,14 +9,19 @@ class FLClient:
     def __init__(self, client_id, dataloader, model_fn, config):
         self.client_id = client_id
         self.dataloader = dataloader
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        requested_device = config.get('device', 'auto')
+        if requested_device == 'auto':
+            requested_device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.device = torch.device(requested_device)
         self.model = model_fn().to(self.device)
         self.config = config
         self.lr = config.get("lr", 0.01)
         self.momentum = config.get("momentum", 0.5)
+        self.lr_decay = config.get('lr_decay', 1.0)
+        self.weight_decay = config.get('weight_decay', 0.0)
         self.epochs = config.get("local_epochs", 1)
         
-    def train(self, global_params: dict) -> tuple[dict, int, dict]:
+    def train(self, global_params: dict, round_idx: int = 0) -> tuple[dict, int, dict]:
         """Local training.
         1. Load global parameters
         2. Train for E local epochs on local data
@@ -26,7 +31,10 @@ class FLClient:
         self.model.load_state_dict(global_params)
         self.model.train()
         
-        optimizer = optim.SGD(self.model.parameters(), lr=self.lr, momentum=self.momentum)
+        round_lr = self.lr * (self.lr_decay ** max(0, int(round_idx)))
+        optimizer = optim.SGD(
+            self.model.parameters(), lr=round_lr, momentum=self.momentum,
+            weight_decay=self.weight_decay)
         criterion = nn.CrossEntropyLoss()
         
         epoch_loss = []

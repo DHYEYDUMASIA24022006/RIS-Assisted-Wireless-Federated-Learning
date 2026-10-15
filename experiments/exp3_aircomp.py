@@ -141,6 +141,9 @@ def run_experiment(config: dict):
                         'lr': fl_cfg.get('learning_rate', 0.01),
                         'momentum': fl_cfg.get('momentum', 0.9),
                         'local_epochs': fl_cfg.get('local_epochs', 5),
+                        'lr_decay': fl_cfg.get('lr_decay', 1.0),
+                        'weight_decay': fl_cfg.get('weight_decay', 0.0),
+                        'device': config.get('system', {}).get('device', 'auto'),
                     }
                 ))
 

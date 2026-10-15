@@ -53,9 +53,17 @@ class RISOptimizer:
         """
         return self._element_wise_ao(h_br, h_ru_list, h_d_list, mode=mode)
 
-    def optimize_sum_snr(self, h_br, h_ru_list, h_d_list) -> np.ndarray:
-        """Maximise sum-SNR across users."""
-        return self._element_wise_ao(h_br, h_ru_list, h_d_list, mode='sum_snr')
+    def optimize_sum_snr(self, h_br, h_ru_list, h_d_list,
+                         user_weights=None) -> np.ndarray:
+        """Maximise weighted sum-SNR across users.
+
+        ``user_weights`` lets the M2 scheduler align the shared RIS toward
+        clients with greater learning utility or participation debt. Omitting
+        it preserves the unweighted M1 behavior.
+        """
+        return self._element_wise_ao(
+            h_br, h_ru_list, h_d_list, mode='sum_snr',
+            user_weights=user_weights)
 
     def optimize_min_snr(self, h_br, h_ru_list, h_d_list) -> np.ndarray:
         """Max-min fairness: maximise minimum user SNR."""
@@ -77,7 +85,8 @@ class RISOptimizer:
     def _element_wise_ao(self, h_br: np.ndarray,
                          h_ru_list: list[np.ndarray],
                          h_d_list: list[np.ndarray],
-                         mode: str = 'sum_snr') -> np.ndarray:
+                         mode: str = 'sum_snr',
+                         user_weights=None) -> np.ndarray:
         """Element-wise alternating optimisation.
 
         For each element n, fix all other phases and find the optimal theta_n
@@ -89,6 +98,12 @@ class RISOptimizer:
         """
         N = self.N
         K = len(h_ru_list)
+        if user_weights is None:
+            user_weights = np.ones(K, dtype=float)
+        else:
+            user_weights = np.asarray(user_weights, dtype=float)
+            if user_weights.shape != (K,) or np.any(user_weights < 0):
+                raise ValueError('user_weights must be K non-negative values')
 
         # Initialise with random phases
         phi = self.random_phases(N)
@@ -115,7 +130,7 @@ class RISOptimizer:
                         # h_eff_k = A_k @ phi + h_d_k
                         h_eff_k = A[k] @ phi + h_d_flat[k]
                         b_kn = h_eff_k - a_kn * phi[n]  # remove element n
-                        val += np.vdot(a_kn, b_kn)  # conj(a_kn)^T @ b_kn
+                        val += user_weights[k] * np.vdot(a_kn, b_kn)
                     if np.abs(val) > 1e-15:
                         phi[n] = val / np.abs(val)
 
