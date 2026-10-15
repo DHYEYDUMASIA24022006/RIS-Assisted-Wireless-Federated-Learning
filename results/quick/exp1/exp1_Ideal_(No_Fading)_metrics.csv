@@ -1,4 +1,0 @@
-round,test_accuracy,test_loss,train_loss,num_participating_clients,num_successful_uploads,aggregation_mse,mean_snr_db,min_snr_db,max_snr_db,outage_probability,mean_uplink_rate_bps,per_round_latency_ms,mean_client_energy_mj,jain_fairness_index,rounds_to_target,ris_phase_norm,selection_strategy,dirichlet_alpha,num_ris_elements
-1,7.8,2.3121973403930665,,4,4,0.0,100.0,100.0,100.0,0.0,1000000000000.0,0.009761088000000001,0.12943680595131746,1.0,-1,,all,,
-2,10.32,2.301326724243164,,4,4,0.0,100.0,100.0,100.0,0.0,1000000000000.0,0.009761088000000001,0.12943680595131746,1.0,-1,,all,,
-3,14.46,2.291475324630737,,4,4,0.0,100.0,100.0,100.0,0.0,1000000000000.0,0.009761088000000001,0.12943680595131746,1.0,-1,,all,,

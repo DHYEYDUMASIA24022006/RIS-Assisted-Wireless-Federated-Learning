@@ -73,8 +73,10 @@ selection:
   cycles_per_sample: 20.0  # FLOPs per data sample
   computation_energy_per_sample_mj: 0.001
   max_participants: null  # null = fraction_fit * num_clients; matched for every selector
-  learning_utility_weight: 0.7  # normalized recent validation-loss gain
-  participation_debt_weight: 0.3  # under-served successful clients get priority
+  learning_utility_weight: 0.65  # smoothed validation-loss improvement rank
+  participation_debt_weight: 0.20  # fewer successful uploads gives higher priority
+  starvation_age_weight: 0.15  # rounds since last successful upload
+  starvation_age_cap_rounds: 100
   utility_ema_momentum: 0.8
   utility_validation_samples: 512  # fixed M2 utility subset; never the test set
   max_alternating_iters: 5

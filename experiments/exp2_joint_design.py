@@ -1,10 +1,8 @@
 """Experiment 2: Joint Device Selection + RIS Design.
 
-Compares 4 selection strategies:
-  (a) Joint device-selection + RIS optimisation (proposed)
-  (b) Channel-only selection (top-K by SNR, no RIS opt)
-  (c) Random selection (no RIS opt)
-  (d) Channel-only + fixed random RIS
+Compares the proposed joint design, three priority-term ablations, and three
+channel/random baselines under the same partition, seed, participant cap, and
+resource budgets.
 
 Sweeps:
   - Latency budget T_max
@@ -114,6 +112,9 @@ def run_experiment(config: dict):
 
     strategies = {
         'Joint+RIS (Proposed)': 'joint',
+        'Joint+RIS (No utility)': 'joint_no_utility',
+        'Joint+RIS (No upload debt)': 'joint_no_debt',
+        'Joint+RIS (No starvation age)': 'joint_no_age',
         'Channel-Only (No RIS)': 'channel_only',
         'Random (No RIS)': 'random',
         'Channel + Random RIS': 'channel_random_ris',
@@ -312,8 +313,8 @@ def _exp2_config(config, latency_ms, energy_mj):
 
 
 def _ris_flags(strat_type):
-    use_ris = strat_type in ('joint', 'channel_random_ris')
-    if strat_type == 'joint':
+    use_ris = strat_type.startswith('joint') or strat_type == 'channel_random_ris'
+    if strat_type.startswith('joint'):
         return use_ris, 'optimized'
     if strat_type == 'channel_random_ris':
         return use_ris, 'random'
@@ -328,8 +329,16 @@ def _get_selector(strat_type, config, channel, ris_opt):
     if k is None:
         k = max(1, int(fl_cfg.get('fraction_fit', 0.5) * fl_cfg.get('num_clients', 20)))
     k = int(k)
-    if strat_type == 'joint':
-        return JointDeviceRISOptimizer(channel, ris_opt, config)
+    if strat_type.startswith('joint'):
+        selector_config = copy.deepcopy(config)
+        selection = selector_config.setdefault('selection', {})
+        if strat_type == 'joint_no_utility':
+            selection['learning_utility_weight'] = 0.0
+        elif strat_type == 'joint_no_debt':
+            selection['participation_debt_weight'] = 0.0
+        elif strat_type == 'joint_no_age':
+            selection['starvation_age_weight'] = 0.0
+        return JointDeviceRISOptimizer(channel, ris_opt, selector_config)
     if strat_type == 'random':
         return RandomSelector(k)
     return ChannelOnlySelector(k)
@@ -346,7 +355,7 @@ def _generate_plots(convergence_results, latency_results, energy_results,
     plt.rcParams.update({'font.size': fontsize})
     sns.set_style("whitegrid")
     colors = sns.color_palette("Set2", len(strategies))
-    markers = ['o', 's', '^', 'D']
+    markers = ['o', 's', '^', 'D', 'v', 'P', 'X']
 
     strat_names = list(strategies.keys())
 
