@@ -134,6 +134,30 @@ For a short end-to-end smoke test on MNIST:
 python main.py --experiment quick
 ```
 
+### 5.4 Revised M2 methodology
+
+Experiment 2 now uses feasibility-first client selection, a smoothed validation-
+loss utility estimate, successful-upload participation debt, and priority-weighted
+RIS phase optimization. It supports the configured IID or Dirichlet client split.
+The validation examples are held out from client training and the test set is
+not used by the scheduler. If no client fits both hard budgets, the round is
+recorded as idle instead of forcing an infeasible participant.
+
+See [`docs/M2_METHODOLOGY.md`](docs/M2_METHODOLOGY.md) for the system model,
+equations, algorithm, assumptions, baselines, ablations, and changes from the
+original M2 plan. MNIST and `config_fast.yaml` are for smoke runs; use CIFAR-10,
+multiple seeds, and preserved per-run configurations and logs for final evidence.
+
+Independent seeds can be evaluated in separate CPU processes:
+
+```bash
+python run_full_evaluation.py --experiments joint --seeds 42 123 456 --workers 3
+```
+
+The default is one worker. CUDA runs are kept serial to avoid GPU memory
+contention. Process pooling uses Python's standard library and adds no package
+dependency.
+
 ---
 
 ## 6. Expected Results and Output
@@ -148,21 +172,43 @@ All experimental results are logged securely in the `results/` directory (create
 ## 7. Project Structure
 
 ```text
-ris-assisted-wireless-fl/
+RIS-Assisted-Wireless-Federated-Learning/
 ├── config/
-│   └── config.yaml          # Centralized configuration file
-├── data/                    # Automatically populated datasets (e.g., CIFAR-10)
-├── src/
-│   ├── channel/             # Wireless channel generation (Rician, Rayleigh)
-│   ├── ris/                 # RIS phase shift optimization (AO, SCA)
-│   ├── fl/                  # Federated learning mechanisms (Flower integration)
-│   ├── selection/           # Joint device selection algorithms
-│   └── utils/               # Helper routines (math, logging)
+│   ├── config.yaml          # Centralized configuration file
+│   └── config_fast.yaml     # Fast smoke-test configuration
+├── data/                    # Auto-downloaded datasets (MNIST, CIFAR-10)
+├── channel/
+│   ├── channel_model.py     # Wireless channel generation (Rician, Rayleigh)
+│   └── ris_optimizer.py     # RIS phase shift optimization (AO)
+├── fl/
+│   ├── aircomp.py           # Over-the-air computation (AirComp)
+│   ├── client.py            # FL client local training
+│   ├── data_partition.py    # IID / Dirichlet non-IID partitioning
+│   ├── models.py            # CNN architectures (MNIST, CIFAR-10)
+│   └── server.py            # FL server with wireless aggregation
+├── optimisation/
+│   ├── joint_design.py      # Joint device selection + RIS optimization
+│   └── baselines.py         # Baseline selection strategies
+├── experiments/
+│   ├── exp1_baseline.py     # Experiment 1: FL convergence ± RIS
+│   ├── exp2_joint_design.py # Experiment 2: Joint client + RIS design
+│   └── exp3_aircomp.py      # Experiment 3: AirComp evaluation
+├── analysis/
+│   └── compare_methods.py   # Cross-experiment comparison & plotting
 ├── metrics/
 │   └── metrics_logger.py    # Standardized metric tracking and I/O
-├── results/                 # Experiment outputs (logs, figures)
-├── experiments/             # Entry points for various simulation scenarios
+├── utils/
+│   └── plotting.py          # Publication-quality plotting utilities
+├── matlab/
+│   └── channel_gen.m        # MATLAB channel generation script
+├── docs/
+│   ├── REVIEW_EVIDENCE_PLAN.md
+│   └── RUNBOOK.md
+├── results/                 # Generated experiment outputs (git-ignored)
+├── main.py                  # Main entry point
+├── run_full_evaluation.py   # Multi-seed evaluation runner
 ├── requirements.txt         # Dependency manifest
+├── LICENSE                  # MIT License
 └── README.md                # Repository documentation
 ```
 

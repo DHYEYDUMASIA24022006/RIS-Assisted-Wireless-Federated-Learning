@@ -15,6 +15,8 @@ import json
 import os
 import sys
 import time
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import get_context
 import numpy as np
 import torch
 import yaml
@@ -100,49 +102,62 @@ def _flatten_numeric(obj, prefix: str, out: dict):
     # lists / strings / None are silently skipped
 
 
+def _run_one_seed(config: dict, seed: int, experiments: list[str], multi_dir: str,
+                  worker_count: int):
+    """Run one fully isolated seed; safe to execute in a spawned process."""
+    set_seeds(seed)
+    torch.set_num_threads(max(1, (os.cpu_count() or 1) // worker_count))
+    cfg = copy.deepcopy(config)
+    cfg.setdefault('system', {})['seed'] = seed
+    seed_dir = os.path.join(multi_dir, f'seed_{seed}')
+    cfg['system']['results_dir'] = seed_dir
+    os.makedirs(seed_dir, exist_ok=True)
+
+    exp3_done = os.path.exists(os.path.join(seed_dir, 'exp3', 'exp3_summary.json'))
+    if exp3_done:
+        print(f'Seed {seed} already complete; skipping experiment rerun.')
+    else:
+        if 'baseline' in experiments or 'all' in experiments:
+            run_exp1(cfg)
+        if 'joint' in experiments or 'all' in experiments:
+            run_exp2(cfg)
+        if 'aircomp' in experiments or 'all' in experiments:
+            run_exp3(cfg)
+    from analysis.compare_methods import generate_comparison
+    generate_comparison(seed_dir)
+    return _collect_json_summaries(seed_dir)
+
+
 def run_multi_seed(config: dict, seeds: list[int], experiments: list[str],
-                   base_results_dir: str = 'results'):
-    """Run experiments across multiple seeds and aggregate."""
+                   base_results_dir: str = 'results', workers: int = 1):
+    """Run independent seeds serially or in isolated processes.
+
+    Multi-process CUDA runs are limited to one worker to avoid GPU memory
+    contention. CPU users can opt into process pooling with ``--workers``.
+    """
 
     multi_dir = os.path.join(base_results_dir, 'multi_seed')
     os.makedirs(multi_dir, exist_ok=True)
+    workers = max(1, int(workers))
+    requested_device = config.get('system', {}).get('device', 'auto')
+    uses_cuda = (requested_device == 'cuda'
+                 or (requested_device == 'auto' and torch.cuda.is_available()))
+    if uses_cuda and workers > 1:
+        print('CUDA selected: limiting multi-seed execution to one process.')
+        workers = 1
 
-    all_seed_summaries = []
-
-    for seed in seeds:
-        print(f'\n{"#"*60}')
-        print(f'#  SEED {seed}')
-        print(f'{"#"*60}')
-
-        set_seeds(seed)
-        cfg = copy.deepcopy(config)
-        cfg.setdefault('system', {})['seed'] = seed
-
-        seed_dir = os.path.join(multi_dir, f'seed_{seed}')
-        cfg['system']['results_dir'] = seed_dir
-        os.makedirs(seed_dir, exist_ok=True)
-
-        exp3_done = os.path.exists(os.path.join(seed_dir, 'exp3', 'exp3_summary.json'))
-        if exp3_done:
-            print(f'Seed {seed} already complete; skipping experiment rerun.')
-        else:
-            if 'baseline' in experiments or 'all' in experiments:
-                print(f'\n--- Experiment 1 (seed={seed}) ---')
-                run_exp1(cfg)
-
-            if 'joint' in experiments or 'all' in experiments:
-                print(f'\n--- Experiment 2 (seed={seed}) ---')
-                run_exp2(cfg)
-
-            if 'aircomp' in experiments or 'all' in experiments:
-                print(f'\n--- Experiment 3 (seed={seed}) ---')
-                run_exp3(cfg)
-
-        summaries = _collect_json_summaries(seed_dir)
-        all_seed_summaries.append(summaries)
-
-        from analysis.compare_methods import generate_comparison
-        generate_comparison(seed_dir)
+    if workers == 1:
+        all_seed_summaries = [
+            _run_one_seed(config, seed, experiments, multi_dir, workers)
+            for seed in seeds]
+    else:
+        # Spawn is the safe multiprocessing mode for PyTorch on Windows.
+        with ProcessPoolExecutor(max_workers=workers,
+                                 mp_context=get_context('spawn')) as pool:
+            futures = [pool.submit(_run_one_seed, config, seed,
+                                   experiments, multi_dir, workers)
+                       for seed in seeds]
+            all_seed_summaries = [future.result() for future in futures]
 
     # Aggregate across seeds
     print(f'\n{"="*60}')
@@ -191,6 +206,8 @@ def main():
                         help='Which experiments to run')
     parser.add_argument('--fast', action='store_true',
                         help='Use reduced rounds and MNIST for quick evaluation')
+    parser.add_argument('--workers', type=int, default=1,
+                        help='Independent seed processes; CUDA execution stays serial')
     args = parser.parse_args()
 
     if os.path.exists(args.config):
@@ -224,7 +241,9 @@ def main():
         print('FAST MODE: MNIST, 6 clients, 6 rounds, skipped Exp2 sweeps')
 
     start = time.time()
-    run_multi_seed(config, args.seeds, args.experiments)
+    base_results_dir = config.get('system', {}).get('results_dir', 'results')
+    run_multi_seed(config, args.seeds, args.experiments,
+                   base_results_dir=base_results_dir, workers=args.workers)
     elapsed = time.time() - start
 
     print(f'\nTotal evaluation time: {elapsed/60:.1f} minutes ({elapsed:.0f} seconds)')

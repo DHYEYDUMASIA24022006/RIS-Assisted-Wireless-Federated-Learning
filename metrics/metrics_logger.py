@@ -15,6 +15,7 @@ class MetricsLogger:
         'outage_probability', 'mean_uplink_rate_bps',
         'per_round_latency_ms', 'mean_client_energy_mj',
         'jain_fairness_index', 'rounds_to_target',
+        'idle_round', 'resource_constraint_violations',
         'ris_phase_norm', 'selection_strategy',
         'dirichlet_alpha', 'num_ris_elements'
     ]
@@ -81,6 +82,8 @@ class MetricsLogger:
             "mean_energy_mj": _mean('mean_client_energy_mj'),
             "final_successful_upload_fairness": self.history[-1].get('jain_fairness_index'),
             "rounds_to_target": self.history[-1].get('rounds_to_target'),
+            "idle_round_fraction": _mean('idle_round'),
+            "mean_resource_constraint_violations_per_round": _mean('resource_constraint_violations'),
         }
         
         with open(filepath, mode='w') as f:
