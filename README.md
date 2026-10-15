@@ -134,6 +134,34 @@ For a short end-to-end smoke test on MNIST:
 python main.py --experiment quick
 ```
 
+### 5.4 Revised M2 methodology
+
+Experiment 2 now uses feasibility-first client selection, a smoothed validation-
+loss utility estimate, successful-upload debt, rounds-since-success aging, and
+priority-weighted RIS phase optimization. The default priority weights are
+0.65 utility, 0.20 upload debt, and 0.15 starvation age. It supports the
+configured IID or Dirichlet client split.
+The validation examples are held out from client training and the test set is
+not used by the scheduler. If no client fits both hard budgets, the round is
+recorded as idle instead of forcing an infeasible participant.
+
+See [`docs/M2_METHODOLOGY.md`](docs/M2_METHODOLOGY.md) for the system model,
+equations, algorithm, assumptions, baselines, ablations, and changes from the
+original M2 plan. MNIST and `config_fast.yaml` are for smoke runs; use CIFAR-10,
+multiple seeds, and preserved per-run configurations and logs for final evidence.
+For university setup requirements and step-by-step Ubuntu instructions, see
+[`docs/RUN_GUIDE_UNIVERSITY.md`](docs/RUN_GUIDE_UNIVERSITY.md).
+
+Independent seeds can be evaluated in separate CPU processes:
+
+```bash
+python run_full_evaluation.py --experiments joint --seeds 42 123 456 --workers 3
+```
+
+The default is one worker. CUDA runs are kept serial to avoid GPU memory
+contention. Process pooling uses Python's standard library and adds no package
+dependency.
+
 ---
 
 ## 6. Expected Results and Output
