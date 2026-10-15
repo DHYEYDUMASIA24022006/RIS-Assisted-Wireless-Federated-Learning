@@ -5,16 +5,21 @@ import torch
 from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision import datasets, transforms
 
-def iid_partition(dataset: Dataset, num_clients: int) -> dict[int, list[int]]:
+def iid_partition(dataset: Dataset, num_clients: int,
+                  indices: list[int] | np.ndarray | None = None) -> dict[int, list[int]]:
     """Uniformly random split of dataset indices across clients."""
-    num_items = int(len(dataset) / num_clients)
-    dict_users, all_idxs = {}, [i for i in range(len(dataset))]
+    all_idxs = (np.asarray(indices, dtype=int).tolist() if indices is not None
+                else list(range(len(dataset))))
+    num_items = int(len(all_idxs) / num_clients)
+    dict_users = {}
     for i in range(num_clients):
         dict_users[i] = list(np.random.choice(all_idxs, num_items, replace=False))
         all_idxs = list(set(all_idxs) - set(dict_users[i]))
     return dict_users
 
-def dirichlet_noniid_partition(dataset: Dataset, num_clients: int, alpha: float, num_classes: int = 10) -> dict[int, list[int]]:
+def dirichlet_noniid_partition(dataset: Dataset, num_clients: int, alpha: float,
+                                num_classes: int = 10,
+                                indices: list[int] | np.ndarray | None = None) -> dict[int, list[int]]:
     """Non-IID partition using Dirichlet(alpha) distribution.
     For each class c:
         proportions ~ Dir(alpha)
@@ -24,7 +29,9 @@ def dirichlet_noniid_partition(dataset: Dataset, num_clients: int, alpha: float,
     min_size = 0
     min_require_size = 10
     K = num_classes
-    N = len(dataset)
+    allowed_indices = (np.asarray(indices, dtype=int) if indices is not None
+                       else np.arange(len(dataset)))
+    N = len(allowed_indices)
     
     if hasattr(dataset, 'targets'):
         labels = np.array(dataset.targets)
@@ -37,7 +44,7 @@ def dirichlet_noniid_partition(dataset: Dataset, num_clients: int, alpha: float,
         idx_batch = [[] for _ in range(num_clients)]
         
         for k in range(K):
-            idx_k = np.where(labels == k)[0]
+            idx_k = allowed_indices[labels[allowed_indices] == k]
             np.random.shuffle(idx_k)
             proportions = np.random.dirichlet(np.repeat(alpha, num_clients))
             # Balance based on current size
@@ -96,3 +103,51 @@ def load_dataset(name: str) -> tuple[Dataset, Dataset]:
     else:
         raise ValueError(f"Unknown dataset: {name}")
     return train_dataset, test_dataset
+
+
+def load_dataset_with_validation(name: str, validation_fraction: float = 0.05,
+                                 seed: int = 42):
+    """Load train/validation/test views and a reproducible train index split.
+
+    The held-out validation view uses deterministic preprocessing and remains
+    separate from the test set. Returned train indices are used for client
+    partitioning so validation examples never enter local training.
+    """
+    name = name.lower()
+    if not 0.0 < validation_fraction < 1.0:
+        raise ValueError('validation_fraction must be between 0 and 1')
+    if name == 'mnist':
+        train_transform = transforms.Compose([
+            transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
+        eval_transform = train_transform
+        train_dataset = datasets.MNIST('./data', train=True, download=True,
+                                       transform=train_transform)
+        validation_dataset = datasets.MNIST('./data', train=True, download=True,
+                                            transform=eval_transform)
+        test_dataset = datasets.MNIST('./data', train=False, download=True,
+                                      transform=eval_transform)
+    elif name == 'cifar10':
+        train_transform = transforms.Compose([
+            transforms.RandomCrop(32, padding=4), transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465),
+                                 (0.2023, 0.1994, 0.2010))])
+        eval_transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.4914, 0.4822, 0.4465),
+                                 (0.2023, 0.1994, 0.2010))])
+        train_dataset = datasets.CIFAR10('./data', train=True, download=True,
+                                         transform=train_transform)
+        validation_dataset = datasets.CIFAR10('./data', train=True, download=True,
+                                              transform=eval_transform)
+        test_dataset = datasets.CIFAR10('./data', train=False, download=True,
+                                        transform=eval_transform)
+    else:
+        raise ValueError(f'Unknown dataset: {name}')
+
+    rng = np.random.default_rng(seed)
+    permutation = rng.permutation(len(train_dataset))
+    n_validation = max(1, int(round(validation_fraction * len(train_dataset))))
+    validation_indices = permutation[:n_validation].tolist()
+    train_indices = permutation[n_validation:].tolist()
+    return train_dataset, validation_dataset, test_dataset, train_indices, validation_indices
