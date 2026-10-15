@@ -35,7 +35,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from channel.channel_model import WirelessChannel
 from channel.ris_optimizer import RISOptimizer
 from fl.models import get_model
-from fl.data_partition import load_dataset, iid_partition, get_client_dataloaders
+from fl.data_partition import (load_dataset_with_validation, iid_partition,
+                               dirichlet_noniid_partition, get_client_dataloaders)
 from fl.client import FLClient
 from fl.server import FLServer
 from optimisation.joint_design import JointDeviceRISOptimizer
@@ -76,12 +77,32 @@ def run_experiment(config: dict):
     print(f"{'='*60}\n")
 
     # ---- Data ---- #
-    train_dataset, test_dataset = load_dataset(dataset_name)
-    partition_map = iid_partition(train_dataset, num_clients)
+    validation_fraction = float(data_cfg.get('validation_fraction', 0.05))
+    (train_dataset, validation_dataset, test_dataset,
+     train_indices, validation_indices) = load_dataset_with_validation(
+        dataset_name, validation_fraction, seed)
+    partition = str(data_cfg.get('partition', 'noniid')).lower()
+    alpha = float(data_cfg.get('exp2_dirichlet_alpha',
+                               data_cfg.get('exp1_dirichlet_alpha', 0.5)))
+    if partition == 'iid':
+        partition_map = iid_partition(train_dataset, num_clients, train_indices)
+    elif partition == 'noniid':
+        partition_map = dirichlet_noniid_partition(
+            train_dataset, num_clients, alpha,
+            int(data_cfg.get('num_classes', 10)), train_indices)
+    else:
+        raise ValueError("data.partition must be 'iid' or 'noniid'")
     client_loaders = get_client_dataloaders(
         train_dataset, partition_map, batch_size,
         data_cfg.get('max_samples_per_client'))
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=128, shuffle=False)
+    validation_subset = torch.utils.data.Subset(validation_dataset, validation_indices)
+    validation_limit = int(sel_cfg.get('utility_validation_samples', 512))
+    if validation_limit > 0 and len(validation_subset) > validation_limit:
+        validation_subset = torch.utils.data.Subset(
+            validation_dataset, validation_indices[:validation_limit])
+    validation_loader = torch.utils.data.DataLoader(
+        validation_subset, batch_size=128, shuffle=False)
 
     def model_fn():
         return get_model(dataset_name, torch.device('cpu'))
@@ -112,7 +133,7 @@ def run_experiment(config: dict):
         np.random.seed(seed)
         torch.manual_seed(seed)
 
-        clients = _create_clients(num_clients, client_loaders, model_fn, fl_cfg)
+        clients = _create_clients(num_clients, client_loaders, model_fn, fl_cfg, config)
 
         run_cfg = _exp2_config(config, fixed_latency, fixed_energy)
         run_cfg['selection']['strategy'] = strat_type
@@ -126,6 +147,7 @@ def run_experiment(config: dict):
             channel=channel,
             ris_optimizer=ris_opt if use_ris else None,
             device_selector=selector,
+            validation_loader=validation_loader,
         )
         logger = MetricsLogger(save_dir, f"exp2_{strat_type}")
 
@@ -158,7 +180,7 @@ def run_experiment(config: dict):
                 np.random.seed(seed)
                 torch.manual_seed(seed)
 
-                clients = _create_clients(num_clients, client_loaders, model_fn, fl_cfg)
+                clients = _create_clients(num_clients, client_loaders, model_fn, fl_cfg, config)
                 run_cfg = _exp2_config(config, t_max, fixed_energy)
                 run_cfg['selection']['strategy'] = strat_type
                 selector = _get_selector(strat_type, run_cfg, channel, ris_opt)
@@ -168,6 +190,7 @@ def run_experiment(config: dict):
                     model_fn=model_fn, test_loader=test_loader, config=run_cfg,
                     channel=channel, ris_optimizer=ris_opt if use_ris else None,
                     device_selector=selector,
+                    validation_loader=validation_loader,
                 )
                 res = server.run(clients, sweep_rounds, use_ris=use_ris,
                                  ris_mode=ris_mode, verbose=False)
@@ -184,7 +207,7 @@ def run_experiment(config: dict):
                 np.random.seed(seed)
                 torch.manual_seed(seed)
 
-                clients = _create_clients(num_clients, client_loaders, model_fn, fl_cfg)
+                clients = _create_clients(num_clients, client_loaders, model_fn, fl_cfg, config)
                 run_cfg = _exp2_config(config, fixed_latency, e_max)
                 run_cfg['selection']['strategy'] = strat_type
                 selector = _get_selector(strat_type, run_cfg, channel, ris_opt)
@@ -194,6 +217,7 @@ def run_experiment(config: dict):
                     model_fn=model_fn, test_loader=test_loader, config=run_cfg,
                     channel=channel, ris_optimizer=ris_opt if use_ris else None,
                     device_selector=selector,
+                    validation_loader=validation_loader,
                 )
                 res = server.run(clients, sweep_rounds, use_ris=use_ris,
                                  ris_mode=ris_mode, verbose=False)
@@ -209,9 +233,13 @@ def run_experiment(config: dict):
 
     summary = {
         'fixed_budget': {'latency_ms': fixed_latency, 'energy_mj': fixed_energy},
+        'data': {'dataset': dataset_name, 'partition': partition,
+                 'dirichlet_alpha': alpha if partition == 'noniid' else None,
+                 'validation_fraction': validation_fraction},
         'convergence': {
             name: {
                 'final_accuracy_percent': float(res['accuracy'][-1]),
+                'best_accuracy_percent': float(max(res['accuracy'])) if res['accuracy'] else 0.0,
                 'mean_participating_clients': float(np.mean(res['num_participating'])),
                 'mean_successful_uploads': float(np.mean(res['num_successful'])),
                 'mean_snr_db': float(np.mean(res['mean_snr_db'])) if res.get('mean_snr_db') else 0.0,
@@ -220,6 +248,8 @@ def run_experiment(config: dict):
                 'mean_latency_ms': float(np.mean(res['per_round_latency_ms'])),
                 'mean_energy_mj': float(np.mean(res['mean_energy_mj'])),
                 'successful_upload_fairness': float(res['successful_upload_fairness'][-1]),
+                'idle_round_fraction': float(np.mean(res['idle_round'])) if res['idle_round'] else 0.0,
+                'total_resource_constraint_violations': int(sum(res['resource_constraint_violations'])),
             }
             for name, res in convergence_results.items()
         },
@@ -234,6 +264,8 @@ def run_experiment(config: dict):
     }
     with open(os.path.join(save_dir, 'exp2_summary.json'), 'w') as f:
         json.dump(summary, f, indent=2)
+    with open(os.path.join(save_dir, 'exp2_config.json'), 'w') as f:
+        json.dump(config, f, indent=2)
 
     # ---- Summary ---- #
     print(f"\n{'='*80}")
@@ -247,7 +279,7 @@ def run_experiment(config: dict):
     print(f"{'='*80}")
 
 
-def _create_clients(num_clients, client_loaders, model_fn, fl_cfg):
+def _create_clients(num_clients, client_loaders, model_fn, fl_cfg, config):
     """Helper to create fresh FL clients."""
     clients = []
     for cid in range(num_clients):
@@ -259,6 +291,9 @@ def _create_clients(num_clients, client_loaders, model_fn, fl_cfg):
                 'lr': fl_cfg.get('learning_rate', 0.01),
                 'momentum': fl_cfg.get('momentum', 0.9),
                 'local_epochs': fl_cfg.get('local_epochs', 5),
+                'lr_decay': fl_cfg.get('lr_decay', 1.0),
+                'weight_decay': fl_cfg.get('weight_decay', 0.0),
+                'device': config.get('system', {}).get('device', 'auto'),
             }
         ))
     return clients
